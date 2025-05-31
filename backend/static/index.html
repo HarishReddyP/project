@@ -70,10 +70,13 @@
     <ul id="backtest"></ul>
 
     <script>
+
+        const BASE_URL = window.location.origin;
+
         async function fetchSignals() {
             const signal = document.getElementById("filterSignal").value;
             const strength = document.getElementById("filterStrength").value;
-            const url = new URL("http://localhost:8000/signals");
+            const url = new URL(`${BASE_URL}/signals`);
             if (signal) url.searchParams.append("signal", signal);
             if (strength) url.searchParams.append("strength", strength);
 
@@ -101,17 +104,17 @@
         }
 
         async function deleteTicker(ticker) {
-            await fetch(`http://localhost:8000/tickers/${ticker}`, { method: 'DELETE' });
+            await fetch(`${BASE_URL}/tickers/${ticker}`, { method: 'DELETE' });
             fetchSignals();
         }
 
         async function downloadCSV() {
-            const res = await fetch("http://localhost:8000/export_csv");
+            const res = await fetch(`${BASE_URL}/export_csv`);
             alert("CSV exported on server (check backend directory).");
         }
 
 async function loadHistory() {
-    const res = await fetch("http://localhost:8000/signal_history");
+    const res = await fetch(`${BASE_URL}/signal_history`);
     const data = await res.json();
     const container = document.getElementById("history");
     container.innerHTML = "";
@@ -159,7 +162,7 @@ async function loadHistory() {
 
 
         async function loadBacktest() {
-            const res = await fetch("http://localhost:8000/backtest");
+            const res = await fetch(`${BASE_URL}/backtest`);
             const data = await res.json();
             const ul = document.getElementById("backtest");
             ul.innerHTML = data.map(d => `<li>${d.ticker}: $${d.total_pl}</li>`).join("");
@@ -168,7 +171,7 @@ async function loadHistory() {
         async function addTicker() {
     const ticker = document.getElementById("newTicker").value.trim();
     if (!ticker) return alert("Enter a valid ticker.");
-    await fetch(`http://localhost:8000/tickers?ticker=${ticker}`, { method: 'POST' });
+    await fetch(`${BASE_URL}/tickers?ticker=${ticker}`, { method: 'POST' });
     alert(`${ticker.toUpperCase()} added. Reloading signals...`);
     fetchSignals();
 }
