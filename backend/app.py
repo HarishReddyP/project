@@ -8,6 +8,7 @@ import smtplib
 from email.mime.text import MIMEText
 import uvicorn
 import os
+from fastapi.staticfiles import StaticFiles
 
 TICKERS_FILE = "tickers.txt"
 
@@ -249,6 +250,9 @@ def get_tickers():
 def add_ticker(ticker: str):
     save_ticker(ticker)
     return {"status": f"{ticker.upper()} added"}
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
