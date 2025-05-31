@@ -18,7 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-tickers = ["TSLA", "AAPL", "MSFT", "NVDA", "GOOGL"]
+tickers = ["TSLA", "AAPL", "MSFT", "NVDA", "GOOGL", "SMCI"]
 
 def init_db():
     conn = sqlite3.connect("signals.db")
@@ -75,13 +75,32 @@ def send_sms_alert(content):
 def store_signal(row):
     conn = sqlite3.connect("signals.db")
     c = conn.cursor()
-    c.execute('''INSERT INTO signals (ticker, signal, price, rsi, macd_trend, volume, ema_status, strength, timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-              (row["ticker"], row["signal"], row["price"], row["rsi"], row["macd_trend"], row["volume"],
-               row["ema_status"], row["strength"], row["timestamp"]))
-    conn.commit()
+
+    # 🔍 Step 1: Fetch the last saved signal for the same ticker
+    c.execute("SELECT signal FROM signals WHERE ticker = ? ORDER BY timestamp DESC LIMIT 1", (row["ticker"],))
+    last = c.fetchone()
+
+    # ✅ Step 2: Insert only if it's different from the last signal
+    if not last or last[0] != row["signal"]:
+        c.execute(
+            "INSERT INTO signals (ticker, signal, price, rsi, macd_trend, volume, ema_status, strength, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                row["ticker"],
+                row["signal"],
+                row["price"],
+                row["rsi"],
+                row["macd_trend"],
+                row["volume"],
+                row["ema_status"],
+                row["strength"],
+                row["timestamp"],
+            ),
+        )
+        conn.commit()
+
     conn.close()
-    print(f"Stored signal in DB: {row}")
+
 
 def get_signals(filtered_signal: str = None, strength: str = None):
     results = []
