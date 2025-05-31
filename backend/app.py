@@ -7,6 +7,9 @@ from twilio.rest import Client
 import smtplib
 from email.mime.text import MIMEText
 import uvicorn
+import os
+
+TICKERS_FILE = "tickers.txt"
 
 app = FastAPI()
 
@@ -17,8 +20,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-tickers = ["TSLA", "AAPL", "MSFT", "NVDA", "GOOGL", "SMCI"]
 
 def init_db():
     conn = sqlite3.connect("signals.db")
@@ -60,6 +61,19 @@ def send_email_alert(content):
     except Exception as e:
         print(f"Email error: {e}")
 
+def read_tickers():
+    if not os.path.exists(TICKERS_FILE):
+        return []
+    with open(TICKERS_FILE, "r") as f:
+        return [line.strip().upper() for line in f if line.strip()]
+
+def save_ticker(ticker):
+    tickers = read_tickers()
+    ticker = ticker.upper()
+    if ticker not in tickers:
+        with open(TICKERS_FILE, "a") as f:
+            f.write(ticker + "\n")
+
 def send_sms_alert(content):
     try:
         client = Client(TWILIO_SID, TWILIO_AUTH)
@@ -75,12 +89,8 @@ def send_sms_alert(content):
 def store_signal(row):
     conn = sqlite3.connect("signals.db")
     c = conn.cursor()
-
-    # 🔍 Step 1: Fetch the last saved signal for the same ticker
     c.execute("SELECT signal FROM signals WHERE ticker = ? ORDER BY timestamp DESC LIMIT 1", (row["ticker"],))
     last = c.fetchone()
-
-    # ✅ Step 2: Insert only if it's different from the last signal
     if not last or last[0] != row["signal"]:
         c.execute(
             "INSERT INTO signals (ticker, signal, price, rsi, macd_trend, volume, ema_status, strength, timestamp) "
@@ -98,12 +108,11 @@ def store_signal(row):
             ),
         )
         conn.commit()
-
     conn.close()
-
 
 def get_signals(filtered_signal: str = None, strength: str = None):
     results = []
+    tickers = read_tickers()
     print("Fetching signals...")
     for ticker in tickers:
         try:
@@ -174,13 +183,11 @@ def read_signals(signal: str = Query(None), strength: str = Query(None)):
 
 @app.get("/backtest")
 def run_backtest():
-    print("Running backtest...")
     conn = sqlite3.connect("signals.db")
     c = conn.cursor()
     c.execute("SELECT ticker, signal, price, timestamp FROM signals ORDER BY timestamp ASC")
     rows = c.fetchall()
     conn.close()
-
     trades = {}
     for row in rows:
         ticker, signal, price, ts = row
@@ -194,35 +201,27 @@ def run_backtest():
             pnl = ((price - entry) / entry) * 1000
             trades[ticker]["pl"] += pnl
             trades[ticker]["position"] = None
-
     return [{"ticker": t, "total_pl": round(v["pl"], 2)} for t, v in trades.items()]
 
 @app.get("/signal_history")
 def signal_history(ticker: str = None, start_date: str = None, end_date: str = None):
     conn = sqlite3.connect("signals.db")
     c = conn.cursor()
-
     query = "SELECT ticker, signal, price, rsi, macd_trend, volume, ema_status, strength, timestamp FROM signals WHERE 1=1"
     params = []
-
     if ticker:
         query += " AND ticker = ?"
         params.append(ticker.upper())
-
     if start_date:
         query += " AND date(timestamp) >= date(?)"
         params.append(start_date)
-
     if end_date:
         query += " AND date(timestamp) <= date(?)"
         params.append(end_date)
-
     query += " ORDER BY timestamp DESC"
-
     c.execute(query, params)
     rows = c.fetchall()
     conn.close()
-
     return [
         {
             "ticker": row[0],
@@ -241,6 +240,15 @@ def signal_history(ticker: str = None, start_date: str = None, end_date: str = N
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
+
+@app.get("/tickers")
+def get_tickers():
+    return read_tickers()
+
+@app.post("/tickers")
+def add_ticker(ticker: str):
+    save_ticker(ticker)
+    return {"status": f"{ticker.upper()} added"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -37,7 +37,8 @@
             <option value="Moderate">Moderate</option>
             <option value="Weak">Weak</option>
         </select>
-
+        <input id="newTicker" placeholder="Add ticker (e.g. AMZN)" />
+        <button onclick="addTicker()">Add</button>
         <button onclick="fetchSignals()">Filter</button>
         <button onclick="downloadCSV()">Download CSV</button>
     </div>
@@ -163,6 +164,14 @@ async function loadHistory() {
             const ul = document.getElementById("backtest");
             ul.innerHTML = data.map(d => `<li>${d.ticker}: $${d.total_pl}</li>`).join("");
         }
+
+        async function addTicker() {
+    const ticker = document.getElementById("newTicker").value.trim();
+    if (!ticker) return alert("Enter a valid ticker.");
+    await fetch(`http://localhost:8000/tickers?ticker=${ticker}`, { method: 'POST' });
+    alert(`${ticker.toUpperCase()} added. Reloading signals...`);
+    fetchSignals();
+}
 
         fetchSignals();
         setInterval(fetchSignals, 60000);
