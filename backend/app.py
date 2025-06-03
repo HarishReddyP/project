@@ -42,12 +42,12 @@ def init_db():
 
 init_db()
 
-SENDGRID_FROM_EMAIL = "your-email@example.com"
-SENDGRID_TO_EMAIL = "recipient@example.com"
-TWILIO_SID = "your_twilio_sid"
-TWILIO_AUTH = "your_twilio_auth"
-TWILIO_FROM = "+10000000000"
-TWILIO_TO = "+10000000000"
+SENDGRID_FROM_EMAIL = "Palugulla.harishreddy225@gmail.com"
+SENDGRID_TO_EMAIL = "harish.palugulla225@gmail.com"
+TWILIO_SID = "AC03ef71bdf590764c8cb7bab4fde4121d"
+TWILIO_AUTH = "eaf6f74684fa589209075e75bd03aa05"
+TWILIO_FROM = "+15705359734"
+TWILIO_TO = "+15705359734"
 
 def send_email_alert(content):
     try:
